@@ -1,0 +1,14 @@
+<div class="terminal-page">
+  <div class="terminal-header">
+    <%= link_to "← Sessions", sessions_path, class: "btn btn-ghost btn-sm" %>
+    <span class="terminal-title"><%= @session_name %></span>
+    <button class="btn btn-ghost btn-sm" data-controller="terminal" data-action="click->terminal#reconnect" data-terminal-target="reconnectBtn">
+      Reconnect
+    </button>
+  </div>
+  <div class="terminal-container"
+       data-controller="terminal"
+       data-terminal-session-value="<%= @session_name %>">
+    <div data-terminal-target="terminal" class="terminal-element"></div>
+  </div>
+</div>

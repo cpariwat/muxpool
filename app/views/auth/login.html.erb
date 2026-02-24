@@ -1,0 +1,21 @@
+<div class="login-container">
+  <div class="login-card">
+    <h1 class="login-title">tmux-web</h1>
+    <p class="login-subtitle">Terminal Dashboard</p>
+
+    <% if flash[:alert] %>
+      <div class="flash flash-alert"><%= flash[:alert] %></div>
+    <% end %>
+    <% if flash[:notice] %>
+      <div class="flash flash-notice"><%= flash[:notice] %></div>
+    <% end %>
+
+    <%= form_with url: authenticate_path, method: :post, class: "login-form" do |f| %>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <%= f.password_field :password, autofocus: true, placeholder: "Enter password", class: "form-input", id: "password" %>
+      </div>
+      <%= f.submit "Login", class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>

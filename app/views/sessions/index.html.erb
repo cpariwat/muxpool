@@ -1,0 +1,35 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <h1>tmux sessions</h1>
+    <div class="header-actions">
+      <button class="btn btn-secondary" data-controller="refresh" data-action="click->refresh#reload">
+        Refresh
+      </button>
+      <%= link_to "Logout", logout_path, class: "btn btn-ghost" %>
+    </div>
+  </div>
+
+  <% if @sessions.empty? %>
+    <div class="empty-state">
+      <p>No tmux sessions found.</p>
+      <p class="empty-hint">Socket: <code><%= TmuxSession.socket_path %></code></p>
+    </div>
+  <% else %>
+    <div class="session-grid">
+      <% @sessions.each do |s| %>
+        <%= link_to session_path(s.name), class: "session-card", data: { turbo: false } do %>
+          <div class="session-name">
+            <span class="status-dot <%= s.attached ? 'attached' : 'detached' %>"></span>
+            <%= s.name %>
+          </div>
+          <div class="session-meta">
+            <span><%= pluralize(s.windows, 'window') %></span>
+            <span>Created <%= time_ago_in_words(s.created_at) %> ago</span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<%= turbo_stream_from "sessions" %>
