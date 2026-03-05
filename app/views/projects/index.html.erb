@@ -1,0 +1,43 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <h1>Muxpool</h1>
+    <div class="header-actions">
+      <%= link_to "Register Project", new_project_path, class: "btn btn-primary" %>
+      <%= link_to "Logout", logout_path, class: "btn btn-ghost" %>
+    </div>
+  </div>
+  <p class="dashboard-tagline">Git projects & worktrees</p>
+
+  <nav class="dashboard-nav">
+    <%= link_to "Sessions", sessions_path, class: "nav-tab" %>
+    <%= link_to "Projects", projects_path, class: "nav-tab nav-tab-active" %>
+  </nav>
+
+  <% if @projects.empty? %>
+    <div class="empty-state">
+      <p>No projects registered.</p>
+      <p class="empty-hint">Register a git repository to manage its worktrees.</p>
+    </div>
+  <% else %>
+    <div class="session-grid">
+      <% @projects.each do |project| %>
+        <div class="session-card-wrapper">
+          <%= link_to project_path(project), class: "session-card" do %>
+            <div class="session-name">
+              <span class="status-dot attached"></span>
+              <%= project.name %>
+            </div>
+            <div class="session-meta">
+              <span><code><%= project.path %></code></span>
+            </div>
+          <% end %>
+          <%= button_to project_path(project), method: :delete,
+                class: "btn-delete-card",
+                data: { turbo_confirm: "Remove project '#{project.name}'?" } do %>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

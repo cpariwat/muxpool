@@ -10,6 +10,25 @@ class SessionsController < ApplicationController
       return
     end
     @session_name = name
+    @sessions = TmuxSession.all
+  end
+
+  def update
+    old_name = TmuxSession.sanitize_name(params[:id])
+    new_name = TmuxSession.sanitize_name(params[:name])
+
+    unless old_name && TmuxSession.exists?(old_name)
+      redirect_to sessions_path, alert: "Session not found."
+      return
+    end
+
+    if new_name.blank?
+      redirect_to session_path(old_name), alert: "Invalid session name."
+    elsif TmuxSession.rename(old_name, new_name)
+      redirect_to session_path(new_name), notice: "Session renamed to '#{new_name}'."
+    else
+      redirect_to session_path(old_name), alert: "Failed to rename session. Name may already be taken."
+    end
   end
 
   def destroy

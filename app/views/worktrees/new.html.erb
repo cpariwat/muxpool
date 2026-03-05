@@ -1,0 +1,46 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <div class="header-breadcrumb">
+      <%= link_to "Projects", projects_path, class: "breadcrumb-link" %>
+      <span class="breadcrumb-sep">/</span>
+      <%= link_to @project.name, project_path(@project), class: "breadcrumb-link" %>
+      <span class="breadcrumb-sep">/</span>
+      <h1>New Worktree</h1>
+    </div>
+  </div>
+
+  <div class="form-container">
+    <% if flash.now[:alert] %>
+      <div class="flash flash-alert"><%= flash.now[:alert] %></div>
+    <% end %>
+
+    <%= form_with url: project_worktrees_path(@project), method: :post, class: "project-form" do |f| %>
+      <div class="form-group">
+        <label for="branch_name">Branch Name</label>
+        <input type="text" name="branch_name" id="branch_name" placeholder="feature/my-branch" class="form-input" autofocus value="<%= params[:branch_name] %>">
+        <p class="form-hint">Creates a new branch and worktree. Use an existing branch name to check it out.</p>
+      </div>
+      <div class="form-group">
+        <label for="base_ref">Base Reference</label>
+        <input type="text" name="base_ref" id="base_ref" placeholder="development" value="<%= params[:base_ref] || 'development' %>" class="form-input">
+        <p class="form-hint">Branch, tag, or commit to base the new worktree on.</p>
+      </div>
+
+      <% if @branches.any? %>
+        <div class="form-group">
+          <label>Existing Branches</label>
+          <div class="branch-list">
+            <% @branches.each do |branch| %>
+              <span class="branch-chip"><%= branch %></span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Create Worktree</button>
+        <%= link_to "Cancel", project_path(@project), class: "btn btn-ghost" %>
+      </div>
+    <% end %>
+  </div>
+</div>
