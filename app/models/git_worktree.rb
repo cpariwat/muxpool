@@ -51,6 +51,51 @@ class GitWorktree
     { success: false, error: e.message }
   end
 
+  # Directories to skip when symlinking gitignored files (bulk/generated content)
+  IGNORED_LINK_DIRS = %w[
+    node_modules tmp log vendor/bundle coverage storage
+    public/assets public/packs public/vite
+    .idea .ruby-lsp .spec-workflow .claude .git
+  ].freeze
+
+  def self.link_config_files(source_path, worktree_path)
+    linked = []
+
+    gitignored_files(source_path).each do |relative|
+      source_file = File.join(source_path, relative)
+      target = File.join(worktree_path, relative)
+
+      next unless File.file?(source_file)
+      next if File.exist?(target) || File.symlink?(target)
+
+      FileUtils.mkdir_p(File.dirname(target))
+      FileUtils.ln_s(source_file, target)
+      linked << relative
+    end
+
+    linked
+  rescue => e
+    Rails.logger.error("Failed to link config files: #{e.message}")
+    linked
+  end
+
+  def self.gitignored_files(project_path)
+    output, status = Open3.capture2(
+      "git", "-C", project_path,
+      "ls-files", "--others", "--ignored", "--exclude-standard"
+    )
+    return [] unless status.success?
+
+    output.strip.split("\n").reject do |path|
+      IGNORED_LINK_DIRS.any? { |dir| path.start_with?("#{dir}/") }
+    end
+  rescue => e
+    Rails.logger.error("Failed to list gitignored files: #{e.message}")
+    []
+  end
+
+  private_class_method :gitignored_files
+
   def self.remove(project_path, worktree_path, force: false)
     args = ["git", "-C", project_path, "worktree", "remove"]
     args << "--force" if force
@@ -83,6 +128,26 @@ class GitWorktree
     output.strip.presence
   rescue
     nil
+  end
+
+  def self.default_branch(project_path)
+    # Try symbolic-ref to origin/HEAD first (most reliable for remote default)
+    output, status = Open3.capture2("git", "-C", project_path, "symbolic-ref", "refs/remotes/origin/HEAD", "--short")
+    if status.success?
+      branch = output.strip.sub("origin/", "")
+      return branch if branch.present?
+    end
+
+    # Fall back to checking common default branch names
+    %w[main master development develop].each do |candidate|
+      _, status = Open3.capture2("git", "-C", project_path, "rev-parse", "--verify", "refs/heads/#{candidate}")
+      return candidate if status.success?
+    end
+
+    # Last resort: current HEAD
+    current_branch(project_path) || "HEAD"
+  rescue
+    "HEAD"
   end
 
   def self.sanitize_branch(name)

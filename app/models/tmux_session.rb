@@ -11,7 +11,7 @@ class TmuxSession
   end
 
   def self.socket_path
-    ENV.fetch("TMUX_SOCKET_PATH", "/tmp/openclaw-tmux-sockets/openclaw.sock")
+    ENV.fetch("TMUX_SOCKET_PATH", "/tmp/muxpool-tmux/default.sock")
   end
 
   def self.all
@@ -45,6 +45,11 @@ class TmuxSession
     false
   end
 
+  BUNDLER_VARS = %w[
+    BUNDLE_GEMFILE BUNDLE_PATH BUNDLE_BIN_PATH BUNDLE_APP_CONFIG
+    RUBYOPT RUBYLIB GEM_HOME GEM_PATH
+  ].freeze
+
   def self.create(name, start_directory: nil)
     sanitized = sanitize_name(name)
     return false if sanitized.blank?
@@ -56,8 +61,16 @@ class TmuxSession
     cmd = [ "tmux", "-S", socket_path, "new-session", "-d", "-s", sanitized ]
     cmd += [ "-c", start_directory ] if start_directory.present?
 
-    _, status = Open3.capture2(*cmd)
-    status.success?
+    Bundler.with_unbundled_env do
+      _, status = Open3.capture2(*cmd)
+      return false unless status.success?
+    end
+
+    # Remove Bundler vars from the tmux session environment and the running shell.
+    # The tmux server may have inherited the host app's env, so new sessions
+    # inherit those vars even when the client env is clean.
+    clean_session_environment(sanitized)
+    true
   rescue => e
     Rails.logger.error("Failed to create tmux session '#{sanitized}': #{e.message}")
     false
@@ -90,6 +103,18 @@ class TmuxSession
     false
   end
 
+  def self.send_keys(name, keys)
+    sanitized = sanitize_name(name)
+    return false if sanitized.blank?
+
+    cmd = [ "tmux", "-S", socket_path, "send-keys", "-t", "=#{sanitized}", keys, "Enter" ]
+    _, status = Open3.capture2(*cmd)
+    status.success?
+  rescue => e
+    Rails.logger.error("Failed to send keys to tmux session '#{sanitized}': #{e.message}")
+    false
+  end
+
   def self.sanitize_name(name)
     return nil if name.blank?
     # Only allow alphanumeric, dash, underscore, dot
@@ -98,6 +123,21 @@ class TmuxSession
   end
 
   private
+
+  def self.clean_session_environment(sanitized)
+    BUNDLER_VARS.each do |var|
+      # Unset from tmux server global env
+      Open3.capture2("tmux", "-S", socket_path, "set-environment", "-g", "-u", var)
+      # Unset from session env
+      Open3.capture2("tmux", "-S", socket_path, "set-environment", "-t", "=#{sanitized}", "-u", var)
+    end
+
+    # Unset vars in the already-running shell and clear the screen
+    unset_cmd = "unset #{BUNDLER_VARS.join(' ')} && clear"
+    Open3.capture2("tmux", "-S", socket_path, "send-keys", "-t", "=#{sanitized}", unset_cmd, "Enter")
+  rescue => e
+    Rails.logger.error("Failed to clean session environment: #{e.message}")
+  end
 
   def self.tmux_command(*args)
     cmd = [ "tmux", "-S", socket_path ] + args

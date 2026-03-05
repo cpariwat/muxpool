@@ -22,7 +22,7 @@
       </div>
       <div class="form-group">
         <label for="base_ref">Base Reference</label>
-        <input type="text" name="base_ref" id="base_ref" placeholder="development" value="<%= params[:base_ref] || 'development' %>" class="form-input">
+        <input type="text" name="base_ref" id="base_ref" placeholder="<%= @default_branch %>" value="<%= params[:base_ref] || @default_branch %>" class="form-input">
         <p class="form-hint">Branch, tag, or commit to base the new worktree on.</p>
       </div>
 

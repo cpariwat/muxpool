@@ -32,6 +32,8 @@ class TerminalChannel < ApplicationCable::Channel
   private
 
   def start_pty
+    stop_pty
+
     socket_path = TmuxSession.socket_path
     cmd = [ "tmux", "-S", socket_path, "attach-session", "-t", @session_name ]
 
@@ -58,12 +60,16 @@ class TerminalChannel < ApplicationCable::Channel
 
   def stop_pty
     @reader_thread&.kill
+    @reader_thread = nil
     @pty_writer&.close rescue nil
+    @pty_writer = nil
     @pty_reader&.close rescue nil
+    @pty_reader = nil
     if @pty_pid
       Process.kill("TERM", @pty_pid) rescue nil
       Process.wait(@pty_pid) rescue nil
     end
+    @pty_pid = nil
   end
 
   def resize_pty(cols, rows)

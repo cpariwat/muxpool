@@ -599,7 +599,8 @@ code {
   display: inline-flex;
 }
 
-.scroll-controls {
+.scroll-controls,
+.pane-controls {
   display: flex;
   align-items: center;
   gap: 2px;

@@ -9,16 +9,28 @@ export default class extends Controller {
   static values = { session: String }
 
   connect() {
+    this.idleTimeout = null
+    this.idleDelay = 2000
+    this.activityState = "idle"
+    this.originalTitle = this.sessionValue
+
     this.setupTerminal()
     this.connectChannel()
     this.setupResize()
+    this.updateTitle("idle")
   }
 
   disconnect() {
+    this.clearIdleTimeout()
     this.teardown()
   }
 
   setupTerminal() {
+    if (this.term) {
+      this.term.dispose()
+      this.term = null
+    }
+
     this.term = new Terminal({
       cursorBlink: true,
       fontSize: 14,
@@ -70,6 +82,11 @@ export default class extends Controller {
   }
 
   connectChannel() {
+    if (this.channel) {
+      this.channel.unsubscribe()
+      this.channel = null
+    }
+
     const sessionName = this.sessionValue
 
     this.channel = consumer.subscriptions.create(
@@ -90,8 +107,10 @@ export default class extends Controller {
           if (data.type === "output") {
             const bytes = Uint8Array.from(atob(data.data), c => c.charCodeAt(0))
             this.term.write(bytes)
+            this.markWorking()
           } else if (data.type === "disconnect") {
             this.term.write("\r\n\x1b[31m--- Session ended ---\x1b[0m\r\n")
+            this.updateTitle("disconnected")
           }
         },
       }
@@ -109,7 +128,7 @@ export default class extends Controller {
     if (this.channel) {
       this.channel.send({ type: "input", data: "\x02[" })
     }
-    this.term?.focus()
+    this.focusTerminal()
   }
 
   scrollUp() {
@@ -130,7 +149,34 @@ export default class extends Controller {
     if (this.channel) {
       this.channel.send({ type: "input", data: "q" })
     }
-    this.term?.focus()
+    this.focusTerminal()
+  }
+
+  splitHorizontal() {
+    this.sendTmuxKey('"')
+  }
+
+  splitVertical() {
+    this.sendTmuxKey('%')
+  }
+
+  nextPane() {
+    this.sendTmuxKey('o')
+  }
+
+  closePane() {
+    this.sendTmuxKey('x')
+  }
+
+  zoomPane() {
+    this.sendTmuxKey('z')
+  }
+
+  sendTmuxKey(key) {
+    if (this.channel) {
+      this.channel.send({ type: "input", data: `\x02${key}` })
+    }
+    this.focusTerminal()
   }
 
   async paste() {
@@ -142,7 +188,7 @@ export default class extends Controller {
     } catch {
       // Clipboard API denied — fallback not available on mobile
     }
-    this.term?.focus()
+    this.focusTerminal()
   }
 
   reconnect() {
@@ -152,6 +198,49 @@ export default class extends Controller {
     this.term.clear()
     this.term.write("\x1b[33mReconnecting...\x1b[0m\r\n")
     this.connectChannel()
+  }
+
+  markWorking() {
+    if (this.activityState !== "working") {
+      this.activityState = "working"
+      this.updateTitle("working")
+    }
+    this.clearIdleTimeout()
+    this.idleTimeout = setTimeout(() => {
+      this.activityState = "idle"
+      this.updateTitle("idle")
+    }, this.idleDelay)
+  }
+
+  clearIdleTimeout() {
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout)
+      this.idleTimeout = null
+    }
+  }
+
+  updateTitle(state) {
+    const name = this.originalTitle
+    const appName = document.querySelector('meta[name="app-name"]')?.content || "Terminal"
+    switch (state) {
+      case "working":
+        document.title = `\u25B6 ${name} - ${appName}`
+        break
+      case "idle":
+        document.title = `\u23F8 ${name} - ${appName}`
+        break
+      case "disconnected":
+        document.title = `\u23F9 ${name} - ${appName}`
+        break
+    }
+  }
+
+  preventFocus(event) {
+    event.preventDefault()
+  }
+
+  focusTerminal() {
+    requestAnimationFrame(() => this.term?.focus())
   }
 
   teardown() {

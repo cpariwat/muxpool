@@ -39,6 +39,6 @@ module Muxpool
     # Don't generate system test files.
     config.generators.system_tests = nil
 
-    config.hosts << "muxpool.howdy.ooo"
+    ENV.fetch("ALLOWED_HOSTS", "").split(",").each { |host| config.hosts << host.strip } if ENV["ALLOWED_HOSTS"].present?
   end
 end

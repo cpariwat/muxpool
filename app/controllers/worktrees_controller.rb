@@ -3,18 +3,21 @@ class WorktreesController < ApplicationController
 
   def new
     @branches = GitWorktree.branches(@project.path)
+    @default_branch = GitWorktree.default_branch(@project.path)
   end
 
   def create
     branch_name = params[:branch_name]&.strip
-    base_ref = params[:base_ref].presence || "development"
+    base_ref = params[:base_ref].presence || GitWorktree.default_branch(@project.path)
 
     result = GitWorktree.create(@project.path, branch_name: branch_name, base_ref: base_ref)
 
     if result[:success]
       safe_branch = GitWorktree.sanitize_branch(branch_name).gsub("/", "-")
       session_name = TmuxSession.sanitize_name("#{@project.name}-#{safe_branch}")
+      GitWorktree.link_config_files(@project.path, result[:path])
       TmuxSession.create(session_name, start_directory: result[:path])
+      install_dependencies(session_name, result[:path])
       redirect_to session_path(session_name)
     else
       flash.now[:alert] = "Failed to create worktree: #{result[:error]}"
@@ -50,6 +53,8 @@ class WorktreesController < ApplicationController
     session_name = "#{@project.name}-#{safe_branch}"
     sanitized_name = TmuxSession.sanitize_name(session_name)
 
+    GitWorktree.link_config_files(@project.path, worktree.path)
+
     if TmuxSession.create(sanitized_name, start_directory: worktree.path)
       redirect_to session_path(sanitized_name)
     else
@@ -68,5 +73,22 @@ class WorktreesController < ApplicationController
 
   def find_worktree(basename)
     GitWorktree.all(@project.path).detect { |wt| wt.basename == basename }
+  end
+
+  def install_dependencies(session_name, worktree_path)
+    commands = []
+    commands << "bundle install" if File.exist?(File.join(worktree_path, "Gemfile"))
+
+    if File.exist?(File.join(worktree_path, "yarn.lock"))
+      commands << "yarn install"
+    elsif File.exist?(File.join(worktree_path, "pnpm-lock.yaml"))
+      commands << "pnpm install"
+    elsif File.exist?(File.join(worktree_path, "package-lock.json"))
+      commands << "npm install"
+    end
+
+    return if commands.empty?
+
+    TmuxSession.send_keys(session_name, commands.join(" && "))
   end
 end

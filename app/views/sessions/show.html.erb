@@ -29,12 +29,19 @@
     </div>
     <div class="terminal-header-actions">
       <div class="scroll-controls">
-        <button class="btn btn-ghost btn-sm" data-action="click->terminal#scrollMode">Scroll</button>
-        <button class="btn btn-ghost btn-sm" data-action="click->terminal#scrollUp">&#9650;</button>
-        <button class="btn btn-ghost btn-sm" data-action="click->terminal#scrollDown">&#9660;</button>
-        <button class="btn btn-ghost btn-sm" data-action="click->terminal#exitScroll">Exit</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#scrollMode">Scroll</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#scrollUp">&#9650;</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#scrollDown">&#9660;</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#exitScroll">Exit</button>
       </div>
-      <button class="btn btn-ghost btn-sm" data-action="click->terminal#paste">Paste</button>
+      <div class="pane-controls">
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#splitHorizontal" title="Split Horizontal (Ctrl-B &quot;)">Split H</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#splitVertical" title="Split Vertical (Ctrl-B %)">Split V</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#nextPane" title="Next Pane (Ctrl-B o)">Next</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#zoomPane" title="Zoom Pane (Ctrl-B z)">Zoom</button>
+        <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#closePane" title="Close Pane (Ctrl-B x)">Close</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#paste">Paste</button>
       <button class="btn btn-ghost btn-sm" data-action="click->terminal#reconnect" data-terminal-target="reconnectBtn">
         Reconnect
       </button>
