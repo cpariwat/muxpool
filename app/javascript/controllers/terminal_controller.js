@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit"
 import { WebLinksAddon } from "@xterm/addon-web-links"
-import consumer from "../channels/consumer"
+import consumer from "channels/consumer"
 
 export default class extends Controller {
   static targets = ["terminal", "reconnectBtn"]
@@ -103,6 +103,46 @@ export default class extends Controller {
       this.fitAddon.fit()
     })
     this.resizeObserver.observe(this.terminalTarget)
+  }
+
+  scrollMode() {
+    if (this.channel) {
+      this.channel.send({ type: "input", data: "\x02[" })
+    }
+    this.term?.focus()
+  }
+
+  scrollUp() {
+    if (this.channel) {
+      // Page Up key sequence
+      this.channel.send({ type: "input", data: "\x1b[5~" })
+    }
+  }
+
+  scrollDown() {
+    if (this.channel) {
+      // Page Down key sequence
+      this.channel.send({ type: "input", data: "\x1b[6~" })
+    }
+  }
+
+  exitScroll() {
+    if (this.channel) {
+      this.channel.send({ type: "input", data: "q" })
+    }
+    this.term?.focus()
+  }
+
+  async paste() {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text && this.channel) {
+        this.channel.send({ type: "input", data: text })
+      }
+    } catch {
+      // Clipboard API denied — fallback not available on mobile
+    }
+    this.term?.focus()
   }
 
   reconnect() {

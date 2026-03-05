@@ -1,3 +1,5 @@
+require "open3"
+
 class TmuxSession
   attr_reader :name, :windows, :created_at, :attached
 
@@ -36,9 +38,22 @@ class TmuxSession
     sanitized = sanitize_name(name)
     return false if sanitized.blank?
 
-    output = tmux_command("has-session", "-t", sanitized)
-    $?.success?
+    cmd = [ "tmux", "-S", socket_path, "has-session", "-t", sanitized ]
+    _, status = Open3.capture2(*cmd)
+    status.success?
   rescue
+    false
+  end
+
+  def self.kill(name)
+    sanitized = sanitize_name(name)
+    return false if sanitized.blank?
+
+    cmd = [ "tmux", "-S", socket_path, "kill-session", "-t", sanitized ]
+    _, status = Open3.capture2(*cmd)
+    status.success?
+  rescue => e
+    Rails.logger.error("Failed to kill tmux session '#{sanitized}': #{e.message}")
     false
   end
 

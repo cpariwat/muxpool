@@ -33,3 +33,16 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Node
+/node_modules/
+/package-lock.json
+/package.json
+
+# Playwright
+/.playwright-mcp/
+/playwright.config.js
+/screenshots/
+
+# Vendor JS
+/vendor/javascript/
+

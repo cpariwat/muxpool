@@ -13,6 +13,6 @@ class ApplicationController < ActionController::Base
   end
 
   def admin_password
-    ENV.fetch("TMUX_WEB_PASSWORD", "admin")
+    ENV.fetch("MUXPOOL_PASSWORD") { ENV.fetch("TMUX_WEB_PASSWORD", "admin") }
   end
 end

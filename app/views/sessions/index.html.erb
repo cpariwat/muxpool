@@ -1,6 +1,6 @@
 <div class="dashboard">
   <div class="dashboard-header">
-    <h1>tmux sessions</h1>
+    <h1>Muxpool</h1>
     <div class="header-actions">
       <button class="btn btn-secondary" data-controller="refresh" data-action="click->refresh#reload">
         Refresh
@@ -8,6 +8,7 @@
       <%= link_to "Logout", logout_path, class: "btn btn-ghost" %>
     </div>
   </div>
+  <p class="dashboard-tagline">A pool of mux 🏊‍♂️</p>
 
   <% if @sessions.empty? %>
     <div class="empty-state">
@@ -17,16 +18,23 @@
   <% else %>
     <div class="session-grid">
       <% @sessions.each do |s| %>
-        <%= link_to session_path(s.name), class: "session-card", data: { turbo: false } do %>
-          <div class="session-name">
-            <span class="status-dot <%= s.attached ? 'attached' : 'detached' %>"></span>
-            <%= s.name %>
-          </div>
-          <div class="session-meta">
-            <span><%= pluralize(s.windows, 'window') %></span>
-            <span>Created <%= time_ago_in_words(s.created_at) %> ago</span>
-          </div>
-        <% end %>
+        <div class="session-card-wrapper">
+          <%= link_to session_path(s.name), class: "session-card", data: { turbo: false } do %>
+            <div class="session-name">
+              <span class="status-dot <%= s.attached ? 'attached' : 'detached' %>"></span>
+              <%= s.name %>
+            </div>
+            <div class="session-meta">
+              <span><%= pluralize(s.windows, 'window') %></span>
+              <span>Created <%= time_ago_in_words(s.created_at) %> ago</span>
+            </div>
+          <% end %>
+          <%= button_to session_path(s.name), method: :delete,
+                class: "btn-delete-card",
+                data: { turbo_confirm: "Kill session '#{s.name}'?" } do %>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <% end %>
+        </div>
       <% end %>
     </div>
   <% end %>

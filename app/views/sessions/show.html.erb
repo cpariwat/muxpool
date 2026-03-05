@@ -1,14 +1,28 @@
-<div class="terminal-page">
+<div class="terminal-page"
+     data-controller="terminal"
+     data-terminal-session-value="<%= @session_name %>">
   <div class="terminal-header">
     <%= link_to "← Sessions", sessions_path, class: "btn btn-ghost btn-sm" %>
     <span class="terminal-title"><%= @session_name %></span>
-    <button class="btn btn-ghost btn-sm" data-controller="terminal" data-action="click->terminal#reconnect" data-terminal-target="reconnectBtn">
-      Reconnect
-    </button>
+    <div class="terminal-header-actions">
+      <div class="scroll-controls">
+        <button class="btn btn-ghost btn-sm" data-action="click->terminal#scrollMode">Scroll</button>
+        <button class="btn btn-ghost btn-sm" data-action="click->terminal#scrollUp">&#9650;</button>
+        <button class="btn btn-ghost btn-sm" data-action="click->terminal#scrollDown">&#9660;</button>
+        <button class="btn btn-ghost btn-sm" data-action="click->terminal#exitScroll">Exit</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-action="click->terminal#paste">Paste</button>
+      <button class="btn btn-ghost btn-sm" data-action="click->terminal#reconnect" data-terminal-target="reconnectBtn">
+        Reconnect
+      </button>
+      <%= button_to session_path(@session_name), method: :delete,
+            class: "btn btn-danger btn-sm",
+            data: { turbo_confirm: "Kill session '#{@session_name}'?" } do %>
+        Delete
+      <% end %>
+    </div>
   </div>
-  <div class="terminal-container"
-       data-controller="terminal"
-       data-terminal-session-value="<%= @session_name %>">
+  <div class="terminal-container">
     <div data-terminal-target="terminal" class="terminal-element"></div>
   </div>
 </div>
