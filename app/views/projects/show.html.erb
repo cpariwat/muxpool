@@ -1,0 +1,62 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <div class="header-breadcrumb">
+      <%= link_to "Projects", projects_path, class: "breadcrumb-link" %>
+      <span class="breadcrumb-sep">/</span>
+      <h1 class="project-title"><%= @project.name %></h1>
+    </div>
+    <div class="header-actions">
+      <%= link_to "New Worktree", new_project_worktree_path(@project), class: "btn btn-primary" %>
+      <button class="btn btn-secondary" data-controller="refresh" data-action="click->refresh#reload">
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="project-info">
+    <span class="project-path"><code><%= @project.path %></code></span>
+    <% if @current_branch %>
+      <span class="project-branch">Branch: <code><%= @current_branch %></code></span>
+    <% end %>
+  </div>
+
+  <% if @worktrees.empty? %>
+    <div class="empty-state">
+      <p>No worktrees found.</p>
+    </div>
+  <% else %>
+    <div class="worktree-list">
+      <% @worktrees.each do |wt| %>
+        <div class="worktree-card">
+          <div class="worktree-info">
+            <div class="worktree-name">
+              <span class="status-dot <%= wt.main_worktree? ? 'detached' : 'attached' %>"></span>
+              <span class="branch-label"><%= wt.branch %></span>
+            </div>
+            <div class="worktree-meta">
+              <span><code><%= wt.path %></code></span>
+              <span class="commit-hash"><%= wt.head[0..7] %></span>
+            </div>
+          </div>
+          <div class="worktree-actions">
+            <%= button_to "Open Terminal",
+                  open_terminal_project_worktree_path(@project, wt.basename),
+                  method: :post,
+                  class: "btn btn-primary btn-sm",
+                  data: { turbo: false } %>
+            <% if wt.main_worktree? %>
+              <span class="worktree-badge">main</span>
+            <% else %>
+              <%= button_to project_worktree_path(@project, wt.basename),
+                    method: :delete,
+                    class: "btn btn-danger btn-sm",
+                    data: { turbo_confirm: "Remove worktree '#{wt.branch}'?" } do %>
+                Remove
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

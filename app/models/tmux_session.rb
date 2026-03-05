@@ -38,10 +38,43 @@ class TmuxSession
     sanitized = sanitize_name(name)
     return false if sanitized.blank?
 
-    cmd = [ "tmux", "-S", socket_path, "has-session", "-t", sanitized ]
+    cmd = [ "tmux", "-S", socket_path, "has-session", "-t", "=#{sanitized}" ]
     _, status = Open3.capture2(*cmd)
     status.success?
   rescue
+    false
+  end
+
+  def self.create(name, start_directory: nil)
+    sanitized = sanitize_name(name)
+    return false if sanitized.blank?
+    return true if exists?(sanitized)
+
+    # Ensure socket directory exists
+    FileUtils.mkdir_p(File.dirname(socket_path))
+
+    cmd = [ "tmux", "-S", socket_path, "new-session", "-d", "-s", sanitized ]
+    cmd += [ "-c", start_directory ] if start_directory.present?
+
+    _, status = Open3.capture2(*cmd)
+    status.success?
+  rescue => e
+    Rails.logger.error("Failed to create tmux session '#{sanitized}': #{e.message}")
+    false
+  end
+
+  def self.rename(old_name, new_name)
+    old_sanitized = sanitize_name(old_name)
+    new_sanitized = sanitize_name(new_name)
+    return false if old_sanitized.blank? || new_sanitized.blank?
+    return false unless exists?(old_sanitized)
+    return false if exists?(new_sanitized)
+
+    cmd = [ "tmux", "-S", socket_path, "rename-session", "-t", "=#{old_sanitized}", new_sanitized ]
+    _, status = Open3.capture2(*cmd)
+    status.success?
+  rescue => e
+    Rails.logger.error("Failed to rename tmux session '#{old_sanitized}' to '#{new_sanitized}': #{e.message}")
     false
   end
 
@@ -49,7 +82,7 @@ class TmuxSession
     sanitized = sanitize_name(name)
     return false if sanitized.blank?
 
-    cmd = [ "tmux", "-S", socket_path, "kill-session", "-t", sanitized ]
+    cmd = [ "tmux", "-S", socket_path, "kill-session", "-t", "=#{sanitized}" ]
     _, status = Open3.capture2(*cmd)
     status.success?
   rescue => e

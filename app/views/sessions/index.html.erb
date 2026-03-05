@@ -8,7 +8,12 @@
       <%= link_to "Logout", logout_path, class: "btn btn-ghost" %>
     </div>
   </div>
-  <p class="dashboard-tagline">A pool of mux 🏊‍♂️</p>
+  <p class="dashboard-tagline">A pool of mux</p>
+
+  <nav class="dashboard-nav">
+    <%= link_to "Sessions", sessions_path, class: "nav-tab nav-tab-active" %>
+    <%= link_to "Projects", projects_path, class: "nav-tab" %>
+  </nav>
 
   <% if @sessions.empty? %>
     <div class="empty-state">
