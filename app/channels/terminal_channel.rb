@@ -20,10 +20,15 @@ class TerminalChannel < ApplicationCable::Channel
   def receive(data)
     return unless @pty_writer
 
-    if data["type"] == "input"
+    case data["type"]
+    when "input"
       @pty_writer.write(data["data"])
-    elsif data["type"] == "resize"
+    when "resize"
       resize_pty(data["cols"].to_i, data["rows"].to_i)
+    when "scroll"
+      handle_scroll(data["direction"], data["lines"].to_i)
+    when "scroll_exit"
+      tmux_send_keys_x("cancel")
     end
   rescue IOError, Errno::EIO
     stop_pty
@@ -78,5 +83,31 @@ class TerminalChannel < ApplicationCable::Channel
     @pty_writer.winsize = [ rows, cols ]
   rescue IOError, Errno::EIO
     # PTY already closed
+  end
+
+  def handle_scroll(direction, lines)
+    lines = lines.clamp(0, 20)
+    socket = TmuxSession.socket_path
+
+    # Enter copy mode if not already in it (no-op if already in copy mode)
+    Open3.capture2("tmux", "-S", socket, "copy-mode", "-t", @session_name)
+
+    return if lines == 0
+
+    command = direction == "up" ? "scroll-up" : "scroll-down"
+    lines.times do
+      Open3.capture2("tmux", "-S", socket, "send-keys", "-X", "-t", @session_name, command)
+    end
+  rescue => e
+    Rails.logger.error("Scroll failed: #{e.message}")
+  end
+
+  def tmux_send_keys_x(command)
+    Open3.capture2(
+      "tmux", "-S", TmuxSession.socket_path,
+      "send-keys", "-X", "-t", @session_name, command
+    )
+  rescue => e
+    Rails.logger.error("Tmux send-keys -X failed: #{e.message}")
   end
 end

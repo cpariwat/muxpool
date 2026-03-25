@@ -13,6 +13,8 @@ export default class extends Controller {
     this.idleDelay = 2000
     this.activityState = "idle"
     this.originalTitle = this.sessionValue
+    this.tmuxScrollMode = false
+    this.scrollExitTimeout = null
 
     this.setupTerminal()
     this.connectChannel()
@@ -70,9 +72,16 @@ export default class extends Controller {
 
     this.term.onData((data) => {
       if (this.channel) {
+        if (this.tmuxScrollMode) {
+          this.exitTmuxScrollMode()
+        }
         this.channel.send({ type: "input", data: data })
       }
     })
+
+    // Capture wheel events before xterm.js's canvas gets them
+    this.handleWheelBound = this.handleWheel.bind(this)
+    this.terminalTarget.addEventListener("wheel", this.handleWheelBound, { capture: true })
 
     this.term.onResize(({ cols, rows }) => {
       if (this.channel) {
@@ -126,30 +135,70 @@ export default class extends Controller {
 
   scrollMode() {
     if (this.channel) {
-      this.channel.send({ type: "input", data: "\x02[" })
+      this.channel.send({ type: "scroll", direction: "up", lines: 0 })
+      this.tmuxScrollMode = true
     }
     this.focusTerminal()
   }
 
   scrollUp() {
     if (this.channel) {
-      // Page Up key sequence
-      this.channel.send({ type: "input", data: "\x1b[5~" })
+      this.tmuxScrollMode = true
+      this.channel.send({ type: "scroll", direction: "up", lines: this.term.rows })
     }
   }
 
   scrollDown() {
     if (this.channel) {
-      // Page Down key sequence
-      this.channel.send({ type: "input", data: "\x1b[6~" })
+      this.channel.send({ type: "scroll", direction: "down", lines: this.term.rows })
     }
   }
 
   exitScroll() {
-    if (this.channel) {
-      this.channel.send({ type: "input", data: "q" })
-    }
+    this.exitTmuxScrollMode()
     this.focusTerminal()
+  }
+
+  handleWheel(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!this.channel) return
+
+    // Accumulate sub-line deltas from trackpad
+    this.scrollAccumulator = (this.scrollAccumulator || 0) + event.deltaY
+    const threshold = 30
+    const lines = Math.trunc(this.scrollAccumulator / threshold)
+    if (lines === 0) return
+    this.scrollAccumulator -= lines * threshold
+
+    if (lines < 0) {
+      this.tmuxScrollMode = true
+      this.channel.send({ type: "scroll", direction: "up", lines: Math.min(Math.abs(lines), 10) })
+    } else if (this.tmuxScrollMode) {
+      this.channel.send({ type: "scroll", direction: "down", lines: Math.min(lines, 10) })
+    }
+
+    this.resetScrollExitTimer()
+  }
+
+  resetScrollExitTimer() {
+    if (this.scrollExitTimeout) {
+      clearTimeout(this.scrollExitTimeout)
+    }
+    this.scrollExitTimeout = setTimeout(() => {
+      this.exitTmuxScrollMode()
+    }, 3000)
+  }
+
+  exitTmuxScrollMode() {
+    if (this.scrollExitTimeout) {
+      clearTimeout(this.scrollExitTimeout)
+      this.scrollExitTimeout = null
+    }
+    if (this.tmuxScrollMode && this.channel) {
+      this.channel.send({ type: "scroll_exit" })
+      this.tmuxScrollMode = false
+    }
   }
 
   splitHorizontal() {
@@ -244,6 +293,14 @@ export default class extends Controller {
   }
 
   teardown() {
+    if (this.scrollExitTimeout) {
+      clearTimeout(this.scrollExitTimeout)
+      this.scrollExitTimeout = null
+    }
+    this.tmuxScrollMode = false
+    if (this.handleWheelBound) {
+      this.terminalTarget.removeEventListener("wheel", this.handleWheelBound, { capture: true })
+    }
     this.resizeObserver?.disconnect()
     if (this.channel) {
       this.channel.unsubscribe()
