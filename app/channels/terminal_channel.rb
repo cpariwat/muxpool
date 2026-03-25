@@ -9,7 +9,8 @@ class TerminalChannel < ApplicationCable::Channel
       return
     end
 
-    stream_from "terminal_#{@session_name}_#{session_id}"
+    @stream_id = "terminal_#{@session_name}_#{SecureRandom.hex(8)}"
+    stream_from @stream_id
     start_pty
   end
 
@@ -29,6 +30,7 @@ class TerminalChannel < ApplicationCable::Channel
       handle_scroll(data["direction"], data["lines"].to_i)
     when "scroll_exit"
       tmux_send_keys_x("cancel")
+      tmux_refresh_client
     end
   rescue IOError, Errno::EIO
     stop_pty
@@ -43,6 +45,7 @@ class TerminalChannel < ApplicationCable::Channel
     cmd = [ "tmux", "-S", socket_path, "attach-session", "-t", @session_name ]
 
     @pty_reader, @pty_writer, @pty_pid = PTY.spawn(*cmd)
+    stream_id = @stream_id
 
     @reader_thread = Thread.new do
       begin
@@ -50,26 +53,24 @@ class TerminalChannel < ApplicationCable::Channel
         while (bytes = @pty_reader.readpartial(4096))
           buf.replace(bytes)
           ActionCable.server.broadcast(
-            "terminal_#{@session_name}_#{session_id}",
+            stream_id,
             { type: "output", data: Base64.strict_encode64(buf) }
           )
         end
       rescue EOFError, IOError, Errno::EIO
-        ActionCable.server.broadcast(
-          "terminal_#{@session_name}_#{session_id}",
-          { type: "disconnect" }
-        )
+        ActionCable.server.broadcast(stream_id, { type: "disconnect" })
       end
     end
   end
 
   def stop_pty
-    @reader_thread&.kill
+    # Close reader first to unblock readpartial, then join the thread cleanly
+    @pty_reader&.close rescue nil
+    @pty_reader = nil
+    @reader_thread&.join(2)
     @reader_thread = nil
     @pty_writer&.close rescue nil
     @pty_writer = nil
-    @pty_reader&.close rescue nil
-    @pty_reader = nil
     if @pty_pid
       Process.kill("TERM", @pty_pid) rescue nil
       Process.wait(@pty_pid) rescue nil
@@ -109,5 +110,14 @@ class TerminalChannel < ApplicationCable::Channel
     )
   rescue => e
     Rails.logger.error("Tmux send-keys -X failed: #{e.message}")
+  end
+
+  def tmux_refresh_client
+    Open3.capture2(
+      "tmux", "-S", TmuxSession.socket_path,
+      "refresh-client", "-t", @session_name
+    )
+  rescue => e
+    Rails.logger.error("Tmux refresh-client failed: #{e.message}")
   end
 end

@@ -160,6 +160,8 @@ export default class extends Controller {
   }
 
   handleWheel(event) {
+    // Only intercept Alt+wheel for tmux scrollback; let normal scroll pass through
+    if (!event.altKey) return
     event.preventDefault()
     event.stopPropagation()
     if (!this.channel) return
