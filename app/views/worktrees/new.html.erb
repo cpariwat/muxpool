@@ -26,12 +26,15 @@
         <p class="form-hint">Branch, tag, or commit to base the new worktree on.</p>
       </div>
 
-      <% if @branches.any? %>
+      <% if @branches.any? || @remote_branches.any? %>
         <div class="form-group">
           <label>Existing Branches</label>
           <div class="branch-list">
             <% @branches.each do |branch| %>
-              <span class="branch-chip"><%= branch %></span>
+              <span class="branch-chip" data-branch="<%= branch %>"><%= branch %></span>
+            <% end %>
+            <% @remote_branches.each do |branch| %>
+              <span class="branch-chip branch-chip-remote" data-branch="<%= branch %>"><%= branch %></span>
             <% end %>
           </div>
         </div>
@@ -44,3 +47,11 @@
     <% end %>
   </div>
 </div>
+
+<script>
+  document.querySelectorAll('.branch-chip[data-branch]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('branch_name').value = chip.dataset.branch
+    })
+  })
+</script>

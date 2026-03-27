@@ -880,6 +880,17 @@ code {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.branch-chip:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.branch-chip-remote {
+  border-style: dashed;
 }
 
 /* --- Responsive --- */

@@ -30,15 +30,16 @@ class GitWorktree
 
     wt_path = worktree_path || default_worktree_path(project_path, sanitized)
 
-    # Try creating with new branch first
-    _, err, status = Open3.capture3(
-      "git", "-C", project_path, "worktree", "add", "-b", sanitized, wt_path, base_ref
-    )
-
-    unless status.success?
-      # Branch might already exist, try without -b
+    if branch_exists?(project_path, sanitized)
+      # Branch exists locally or remotely — git auto-creates tracking branch
       _, err, status = Open3.capture3(
         "git", "-C", project_path, "worktree", "add", wt_path, sanitized
+      )
+    else
+      # New branch — create from base_ref
+      base_ref = default_branch(project_path) if base_ref == "HEAD"
+      _, err, status = Open3.capture3(
+        "git", "-C", project_path, "worktree", "add", "-b", sanitized, wt_path, base_ref
       )
     end
 
@@ -109,6 +110,30 @@ class GitWorktree
     end
   rescue => e
     { success: false, error: e.message }
+  end
+
+  def self.branch_exists?(project_path, branch_name)
+    # Check local
+    _, status = Open3.capture2("git", "-C", project_path, "rev-parse", "--verify", "refs/heads/#{branch_name}")
+    return true if status.success?
+
+    # Check remote
+    _, status = Open3.capture2("git", "-C", project_path, "rev-parse", "--verify", "refs/remotes/origin/#{branch_name}")
+    status.success?
+  rescue
+    false
+  end
+
+  def self.remote_branches(project_path)
+    output, status = Open3.capture2("git", "-C", project_path, "branch", "-r", "--format=%(refname:short)")
+    return [] unless status.success?
+
+    output.strip.split("\n")
+      .map { |b| b.strip.sub("origin/", "") }
+      .reject { |b| b.blank? || b.include?("HEAD") }
+  rescue => e
+    Rails.logger.error("Failed to list remote branches for #{project_path}: #{e.message}")
+    []
   end
 
   def self.branches(project_path)

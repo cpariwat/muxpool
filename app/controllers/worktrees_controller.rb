@@ -3,6 +3,7 @@ class WorktreesController < ApplicationController
 
   def new
     @branches = GitWorktree.branches(@project.path)
+    @remote_branches = GitWorktree.remote_branches(@project.path) - @branches
     @default_branch = GitWorktree.default_branch(@project.path)
   end
 
@@ -22,6 +23,7 @@ class WorktreesController < ApplicationController
     else
       flash.now[:alert] = "Failed to create worktree: #{result[:error]}"
       @branches = GitWorktree.branches(@project.path)
+      @remote_branches = GitWorktree.remote_branches(@project.path) - @branches
       render :new, status: :unprocessable_entity
     end
   end
@@ -33,7 +35,7 @@ class WorktreesController < ApplicationController
       return
     end
 
-    result = GitWorktree.remove(@project.path, worktree.path)
+    result = GitWorktree.remove(@project.path, worktree.path, force: true)
 
     if result[:success]
       redirect_to project_path(@project), notice: "Worktree removed."
