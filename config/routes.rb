@@ -5,13 +5,18 @@ Rails.application.routes.draw do
   get  "logout", to: "auth#logout",       as: :logout
 
   # Sessions (tmux)
-  resources :sessions, only: [ :index, :show, :update, :destroy ]
+  resources :sessions, only: [ :index, :show, :update, :destroy ] do
+    member do
+      post :open_ide
+    end
+  end
 
   # Projects & Worktrees
   resources :projects, only: [ :index, :show, :new, :create, :destroy ] do
     resources :worktrees, only: [ :new, :create, :destroy ] do
       member do
         post :open_terminal
+        post :open_ide
       end
     end
   end

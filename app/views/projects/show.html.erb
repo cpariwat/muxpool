@@ -44,6 +44,11 @@
                   method: :post,
                   class: "btn btn-primary btn-sm",
                   data: { turbo: false } %>
+            <%= button_to "Open in #{TmuxSession.ide_name}",
+                  open_ide_project_worktree_path(@project, wt.basename),
+                  method: :post,
+                  class: "btn btn-secondary btn-sm",
+                  data: { turbo: false } %>
             <% if wt.main_worktree? %>
               <span class="worktree-badge">main</span>
             <% else %>

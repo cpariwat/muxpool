@@ -356,6 +356,36 @@ code {
   border-color: rgba(255, 123, 114, 0.3);
 }
 
+.btn-ide-card {
+  position: absolute;
+  top: 8px;
+  right: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  opacity: 0;
+  z-index: 1;
+}
+
+.session-card-wrapper:hover .btn-ide-card {
+  opacity: 1;
+}
+
+.btn-ide-card:hover {
+  color: var(--blue);
+  background: rgba(88, 166, 255, 0.15);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
 .session-name {
   display: flex;
   align-items: center;

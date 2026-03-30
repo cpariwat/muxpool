@@ -1,4 +1,5 @@
 require "open3"
+require "shellwords"
 
 class TmuxSession
   attr_reader :name, :windows, :created_at, :attached
@@ -113,6 +114,54 @@ class TmuxSession
   rescue => e
     Rails.logger.error("Failed to send keys to tmux session '#{sanitized}': #{e.message}")
     false
+  end
+
+  def self.pane_current_path(name)
+    sanitized = sanitize_name(name)
+    return nil if sanitized.blank?
+
+    output, status = Open3.capture2("tmux", "-S", socket_path, "list-panes", "-t", "=#{sanitized}", "-F", '#{pane_current_path}', "-f", '#{pane_active}')
+    return nil unless status.success?
+
+    path = output.lines.first&.strip
+    path.presence
+  rescue => e
+    Rails.logger.error("Failed to get pane path for '#{name}': #{e.message}")
+    nil
+  end
+
+  def self.ide_command(directory)
+    cmd_str = ENV.fetch("MUXPOOL_IDE_COMMAND", "open -a RubyMine")
+    Shellwords.shellsplit(cmd_str) + [ directory ]
+  end
+
+  def self.ide_name
+    cmd = ENV.fetch("MUXPOOL_IDE_COMMAND", "open -a RubyMine")
+    if cmd.include?("RubyMine")
+      "RubyMine"
+    elsif cmd.include?("cursor")
+      "Cursor"
+    elsif cmd.include?("code")
+      "VS Code"
+    else
+      "IDE"
+    end
+  end
+
+  def self.open_in_ide(directory)
+    return { success: false, error: "No directory provided" } if directory.blank?
+    return { success: false, error: "Directory does not exist" } unless File.directory?(directory)
+
+    cmd = ide_command(directory)
+    output, status = Open3.capture2e(*cmd)
+
+    if status.success?
+      { success: true }
+    else
+      { success: false, error: output.strip.presence || "IDE command failed" }
+    end
+  rescue => e
+    { success: false, error: e.message }
   end
 
   def self.sanitize_name(name)

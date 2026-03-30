@@ -44,4 +44,25 @@ class SessionsController < ApplicationController
       redirect_to sessions_path, alert: "Failed to remove session '#{name}'."
     end
   end
+
+  def open_ide
+    name = TmuxSession.sanitize_name(params[:id])
+    unless name && TmuxSession.exists?(name)
+      redirect_to sessions_path, alert: "Session not found."
+      return
+    end
+
+    directory = TmuxSession.pane_current_path(name)
+    unless directory
+      redirect_back fallback_location: session_path(name), alert: "Could not determine session working directory."
+      return
+    end
+
+    result = TmuxSession.open_in_ide(directory)
+    if result[:success]
+      redirect_back fallback_location: session_path(name), notice: "Opened #{directory} in #{TmuxSession.ide_name}."
+    else
+      redirect_back fallback_location: session_path(name), alert: "Failed to open IDE: #{result[:error]}"
+    end
+  end
 end

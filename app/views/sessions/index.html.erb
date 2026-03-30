@@ -34,6 +34,11 @@
               <span>Created <%= time_ago_in_words(s.created_at) %> ago</span>
             </div>
           <% end %>
+          <%= button_to open_ide_session_path(s.name), method: :post,
+                class: "btn-ide-card",
+                title: "Open in #{TmuxSession.ide_name}" do %>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <% end %>
           <%= button_to session_path(s.name), method: :delete,
                 class: "btn-delete-card",
                 data: { turbo_confirm: "Kill session '#{s.name}'?" } do %>

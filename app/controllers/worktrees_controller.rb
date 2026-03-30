@@ -64,6 +64,21 @@ class WorktreesController < ApplicationController
     end
   end
 
+  def open_ide
+    worktree = find_worktree(params[:id])
+    unless worktree
+      redirect_to project_path(@project), alert: "Worktree not found."
+      return
+    end
+
+    result = TmuxSession.open_in_ide(worktree.path)
+    if result[:success]
+      redirect_to project_path(@project), notice: "Opened #{worktree.branch} in #{TmuxSession.ide_name}."
+    else
+      redirect_to project_path(@project), alert: "Failed to open IDE: #{result[:error]}"
+    end
+  end
+
   private
 
   def set_project

@@ -42,6 +42,9 @@
         <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#closePane" title="Close Pane (Ctrl-B x)">Close</button>
       </div>
       <button class="btn btn-ghost btn-sm" data-action="mousedown->terminal#preventFocus click->terminal#paste">Paste</button>
+      <%= button_to open_ide_session_path(@session_name), method: :post, class: "btn btn-ghost btn-sm" do %>
+        Open in <%= TmuxSession.ide_name %>
+      <% end %>
       <button class="btn btn-ghost btn-sm" data-action="click->terminal#reconnect" data-terminal-target="reconnectBtn">
         Reconnect
       </button>
