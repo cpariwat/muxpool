@@ -59,8 +59,16 @@ class GitWorktree
     .idea .ruby-lsp .spec-workflow .claude .git
   ].freeze
 
+  # Directories to symlink wholesale from the main repo into worktrees.
+  # These are shared across all branches to avoid redundant setup.
+  SHARED_DIRS = %w[
+    .claude .spec-workflow node_modules
+  ].freeze
+
   def self.link_config_files(source_path, worktree_path)
     linked = []
+
+    link_shared_dirs(source_path, worktree_path, linked)
 
     gitignored_files(source_path).each do |relative|
       source_file = File.join(source_path, relative)
@@ -79,6 +87,21 @@ class GitWorktree
     Rails.logger.error("Failed to link config files: #{e.message}")
     linked
   end
+
+  def self.link_shared_dirs(source_path, worktree_path, linked)
+    SHARED_DIRS.each do |dir|
+      source_dir = File.join(source_path, dir)
+      target = File.join(worktree_path, dir)
+
+      next unless File.directory?(source_dir)
+      next if File.exist?(target) || File.symlink?(target)
+
+      FileUtils.ln_s(source_dir, target)
+      linked << "#{dir}/"
+    end
+  end
+
+  private_class_method :link_shared_dirs
 
   def self.gitignored_files(project_path)
     output, status = Open3.capture2(
