@@ -121,19 +121,39 @@ class GitWorktree
   private_class_method :gitignored_files
 
   def self.remove(project_path, worktree_path, force: false)
+    # Remove symlinks first so git worktree remove doesn't choke on them
+    remove_shared_dir_symlinks(worktree_path)
+
     args = ["git", "-C", project_path, "worktree", "remove"]
     args << "--force" if force
     args << worktree_path
 
     _, err, status = Open3.capture3(*args)
-    if status.success?
-      { success: true }
-    else
-      { success: false, error: err.strip.presence || "Unknown error" }
+    unless status.success?
+      # If git failed, force-clean the directory and prune the worktree reference
+      FileUtils.rm_rf(worktree_path)
+      Open3.capture2("git", "-C", project_path, "worktree", "prune")
     end
+
+    # Clean up empty parent directory (e.g., repo-worktrees/)
+    parent = File.dirname(worktree_path)
+    FileUtils.rmdir(parent) if Dir.exist?(parent) && Dir.empty?(parent)
+
+    { success: true }
   rescue => e
     { success: false, error: e.message }
   end
+
+  def self.remove_shared_dir_symlinks(worktree_path)
+    SHARED_DIRS.each do |dir|
+      target = File.join(worktree_path, dir)
+      FileUtils.rm(target) if File.symlink?(target)
+    end
+  rescue => e
+    Rails.logger.error("Failed to remove symlinks in #{worktree_path}: #{e.message}")
+  end
+
+  private_class_method :remove_shared_dir_symlinks
 
   def self.branch_exists?(project_path, branch_name)
     # Check local
