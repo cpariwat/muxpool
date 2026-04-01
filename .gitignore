@@ -7,6 +7,9 @@
 # JetBrains IDE
 /.idea/
 
+# Personal project config
+/config/projects.yml
+
 # Ignore bundler config.
 /.bundle
 
